@@ -104,20 +104,22 @@ The repository is organized from foundational concepts to advanced production to
 
 ## Modules
 
-| Module | Description |
-|----------|-------------|
-| Data Structures | Redis core data structures and production use cases |
-| Caching | Cache Aside, Write Through, Write Behind, Refresh Ahead |
-| Pub/Sub | Real-time publish-subscribe messaging |
-| Streams | Reliable event processing using consumer groups |
-| Search | Full-text search, indexing, ranking, and BM25 |
-| Geo | Geospatial indexing and nearby searches |
-| Rate Limiter | Fixed Window, Sliding Window, Token Bucket implementations |
-| Distributed Locks | Redis-based distributed locking patterns |
-| Replication | Primary-replica architecture and consistency trade-offs |
-| Sentinel | Automatic failover and high availability |
-| Cluster | Hash slots, sharding, rebalancing, and scaling |
-| AWS ElastiCache | Production deployment patterns on AWS |
+
+| Module            | Description                                                |
+| ----------------- | ---------------------------------------------------------- |
+| Data Structures   | Redis core data structures and production use cases        |
+| Caching           | Cache Aside, Write Through, Write Behind, Refresh Ahead    |
+| Pub/Sub           | Real-time publish-subscribe messaging                      |
+| Streams           | Reliable event processing using consumer groups            |
+| Search            | Full-text search, indexing, ranking, and BM25              |
+| Geo               | Geospatial indexing and nearby searches                    |
+| Rate Limiter      | Fixed Window, Sliding Window, Token Bucket implementations |
+| Distributed Locks | Redis-based distributed locking patterns                   |
+| Replication       | Primary-replica architecture and consistency trade-offs    |
+| Sentinel          | Automatic failover and high availability                   |
+| Cluster           | Hash slots, sharding, rebalancing, and scaling             |
+| AWS ElastiCache   | Production deployment patterns on AWS                      |
+
 
 ---
 
@@ -242,7 +244,3 @@ The repository includes architecture notes, production trade-offs, and interview
 - [ ] AWS ElastiCache
 - [ ] Observability
 - [ ] Production Best Practices
-```
-:::
-
-This is professional enough for GitHub, and once you start implementing Hash and Sorted Set examples, the README will already look like a serious open-source project rather than a generated Spring Boot starter.

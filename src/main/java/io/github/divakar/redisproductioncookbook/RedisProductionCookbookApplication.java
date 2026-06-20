@@ -9,6 +9,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+/**
+ * Entry point for the Redis Production Cookbook Spring Boot application.
+ */
 @SpringBootApplication
 public class RedisProductionCookbookApplication {
 
