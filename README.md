@@ -4,6 +4,26 @@ Production-grade Redis patterns using Spring Boot, Redis Stack, Streams, Search,
 
 Copyright (c) 2026 Divakar Ungatla
 
+## Running Locally
+
+### Start Redis
+
+```bash
+docker compose up -d
+```
+
+Verify:
+
+```bash
+docker ps
+```
+
+### Start Application
+
+```bash
+./gradlew bootRun
+```
+
 ## Introduction
 
 ## Learning Path
