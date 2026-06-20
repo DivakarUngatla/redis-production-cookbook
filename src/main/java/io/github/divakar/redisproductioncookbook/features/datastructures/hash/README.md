@@ -25,11 +25,11 @@ Redis Hashes are ideal for representing small objects and entities.
 
 Benefits include:
 
-- No need to serialize and deserialize an entire JSON document.
-- Individual fields can be updated independently.
-- Memory efficient for small objects.
-- Fast field-level access using Redis hash commands.
-- Easy to model domain entities such as users, products, sessions, and preferences.
+- No need to serialize and deserialize an entire JSON document
+- Individual fields can be updated independently
+- Memory efficient for small objects
+- Fast field-level access using Redis hash commands
+- Easy to model domain entities such as users, products, sessions, and preferences
 
 Example:
 
@@ -44,6 +44,107 @@ age=30
 
 ---
 
+## Why Not a Relational Database?
+
+A relational database is a natural choice for storing user profiles and supports:
+
+- Indexes
+- Transactions
+- Joins
+- Analytics
+- Durable storage
+
+Redis Hashes become attractive when:
+
+- Extremely fast profile lookups are required
+- Frequently accessed profile attributes exist
+- Low latency matters
+- Partial field updates are common
+- Profiles are used as cache entries
+
+Redis is not always a replacement for a relational database.
+
+Many production systems use the following architecture:
+
+```text
+Primary Database
+       |
+       v
+    Redis Hash
+       |
+       v
+ Application
+```
+
+The relational database remains the system of record while Redis acts as a high-speed cache.
+
+---
+
+## Redis Key Design
+
+User profiles are stored using:
+
+```text
+user:profile:{user-123}
+```
+
+The value inside braces:
+
+```text
+{user-123}
+```
+
+is a Redis Hash Tag.
+
+Hash tags ensure related keys are mapped to the same Redis Cluster hash slot.
+
+Example:
+
+```text
+user:profile:{user-123}
+user:settings:{user-123}
+user:orders:{user-123}
+```
+
+All three keys will be stored on the same cluster shard.
+
+---
+
+## Architecture
+
+```text
+                  HTTP Requests
+                       |
+                       v
+          +------------------------+
+          | UserProfileController  |
+          +------------------------+
+                       |
+                       v
+          +------------------------+
+          | UserProfileRepository  |
+          +------------------------+
+                       |
+                       v
+          +------------------------+
+          | Redis Hash             |
+          | user:profile:{userId}  |
+          |                        |
+          | id=user-123            |
+          | name=Divakar           |
+          | email=divakar@xyz.com  |
+          | age=30                 |
+          +------------------------+
+```
+
+The controller handles HTTP requests and validation.
+
+The repository maps the domain model to Redis hash fields and performs Redis operations.
+
+Each profile attribute is stored independently, allowing field-level updates without rewriting the entire object.
+
+---
+
 ## Redis Commands
 
 This example demonstrates the following Redis commands:
@@ -54,7 +155,45 @@ This example demonstrates the following Redis commands:
 | HGET | Read a single field |
 | HGETALL | Read the entire hash |
 | HDEL | Delete fields from a hash |
-| EXPIRE | Optional expiration for temporary profiles |
+| EXPIRE | Optional expiration |
+
+---
+
+## Example Commands
+
+### Create Profile
+
+```redis
+HSET user:profile:{user-123} \
+id user-123 \
+name Divakar \
+email divakar@example.com \
+age 30
+```
+
+### Read Entire Profile
+
+```redis
+HGETALL user:profile:{user-123}
+```
+
+### Read Single Field
+
+```redis
+HGET user:profile:{user-123} email
+```
+
+### Update Age
+
+```redis
+HSET user:profile:{user-123} age 31
+```
+
+### Delete Field
+
+```redis
+HDEL user:profile:{user-123} age
+```
 
 ---
 
@@ -64,8 +203,8 @@ This example demonstrates the following Redis commands:
 |----------|------------|
 | HSET | O(1) |
 | HGET | O(1) |
-| HGETALL | O(N) |
 | HDEL | O(1) |
+| HGETALL | O(N) |
 | EXPIRE | O(1) |
 
 Where:
@@ -73,6 +212,8 @@ Where:
 ```text
 N = Number of fields in the hash
 ```
+
+`HGETALL` should be used carefully on very large hashes because Redis must return every field.
 
 ---
 
@@ -83,10 +224,43 @@ Redis Hashes are commonly used for:
 - User Profiles
 - Product Metadata
 - Customer Preferences
+- Shopping Cart Attributes
 - Session Attributes
 - Feature Flags
-- Shopping Cart Attributes
 - Configuration Data
+- User Settings
+- Device Metadata
+
+---
+
+## Redis Hash Internals
+
+Redis Hashes use different internal encodings depending on their size.
+
+For small hashes, Redis uses a compact representation called a Listpack.
+
+For larger hashes, Redis automatically converts the structure into a Hashtable.
+
+```text
+Small Hash
+    |
+    v
+ Listpack
+
+Large Hash
+    |
+    v
+ Hashtable
+```
+
+Benefits:
+
+- Reduced memory consumption
+- Efficient field-level access
+- Fast updates
+- Automatic optimization
+
+Redis performs these conversions automatically.
 
 ---
 
@@ -119,15 +293,15 @@ user:profile:{user-123}
 
 Updating a single field requires:
 
-1. Reading the entire JSON document.
-2. Deserializing it.
-3. Updating the field.
-4. Serializing it again.
-5. Writing the entire document back.
+1. Read the document
+2. Deserialize
+3. Modify
+4. Serialize
+5. Write the document back
 
 ### Redis Hash
 
-Only the modified field needs to be updated:
+Update only the field:
 
 ```text
 HSET user:profile:{user-123} age 31
@@ -135,34 +309,37 @@ HSET user:profile:{user-123} age 31
 
 Advantages:
 
-- Smaller writes
-- Faster updates
-- Field-level access
-- Better memory efficiency for small objects
+#### Hashes
 
-Redis Hashes are generally preferred when the application frequently updates individual fields.
+- Field-level updates
+- Smaller writes
+- Lower serialization overhead
+- Individual field access
+- Memory efficient
+
+#### JSON
+
+- Nested structures
+- Easier document modeling
+- Better for complex objects
+
+For nested documents, RedisJSON may be a better choice.
 
 ---
 
-## Redis Cluster Note
+## Cluster Considerations
 
-This example uses:
+The entire hash resides on a single shard.
+
+Example:
 
 ```text
 user:profile:{user-123}
 ```
 
-The value inside braces:
+All fields for that profile are stored together.
 
-```text
-{user-123}
-```
-
-is called a Redis Hash Tag.
-
-Hash Tags ensure related keys are mapped to the same Redis Cluster hash slot.
-
-Examples:
+Using the same hash tag:
 
 ```text
 user:profile:{user-123}
@@ -170,9 +347,80 @@ user:settings:{user-123}
 user:orders:{user-123}
 ```
 
-All three keys will be stored on the same cluster shard.
+ensures all related keys map to the same hash slot.
 
-This becomes important when performing multi-key operations in a Redis Cluster.
+Benefits:
+
+- Multi-key operations become possible
+- Reduced cross-shard traffic
+- Better data locality
+
+---
+
+## Scaling Strategies
+
+Redis Hashes can support millions of profiles when memory is sized correctly.
+
+### Cache-Aside Pattern
+
+```text
+Application
+      |
+      v
+Redis Hash
+      |
+ Cache Miss
+      |
+      v
+Database
+```
+
+Profiles are loaded into Redis on demand.
+
+### Hot Profile Management
+
+Some users receive significantly more traffic:
+
+- Administrators
+- Celebrity accounts
+- Shared accounts
+
+Monitor:
+
+- Hot keys
+- Command latency
+- Memory usage
+
+### Read Scaling
+
+Read replicas can offload reads.
+
+Trade-off:
+
+```text
+More Read Throughput
+       |
+       v
+Potentially Stale Reads
+```
+
+Applications requiring strong consistency should continue reading from the primary.
+
+### Profile Hydration
+
+Many systems store:
+
+```text
+Complete Profile
+        |
+        v
+ Relational Database
+
+Frequently Accessed Fields
+        |
+        v
+     Redis Hash
+```
 
 ---
 
@@ -184,7 +432,7 @@ This becomes important when performing multi-key operations in a Redis Cluster.
 docker compose up -d
 ```
 
-### Start the Application
+### Start Application
 
 ```bash
 ./gradlew bootRun
@@ -205,7 +453,7 @@ curl -i -X POST http://localhost:8080/api/user-profiles \
       }'
 ```
 
-Expected Response:
+Expected:
 
 ```text
 HTTP/1.1 201 Created
@@ -219,7 +467,7 @@ HTTP/1.1 201 Created
 curl http://localhost:8080/api/user-profiles/user-123
 ```
 
-Example Response:
+Response:
 
 ```json
 {
@@ -232,28 +480,14 @@ Example Response:
 
 ---
 
-## Update a User Profile
-
-```bash
-curl -i -X PUT http://localhost:8080/api/user-profiles/user-123 \
-  -H "Content-Type: application/json" \
-  -d '{
-        "id":"user-123",
-        "name":"Divakar U",
-        "email":"divakar@example.com",
-        "age":31
-      }'
-```
-
----
-
 ## Delete a User Profile
 
 ```bash
-curl -i -X DELETE http://localhost:8080/api/user-profiles/user-123
+curl -i -X DELETE \
+http://localhost:8080/api/user-profiles/user-123
 ```
 
-Expected Response:
+Expected:
 
 ```text
 HTTP/1.1 204 No Content
@@ -263,14 +497,12 @@ HTTP/1.1 204 No Content
 
 ## Inspect Data Directly in Redis
 
-Verify the stored hash using Redis CLI:
-
 ```bash
 docker exec -it redis-local redis-cli \
-  HGETALL 'user:profile:{user-123}'
+HGETALL 'user:profile:{user-123}'
 ```
 
-Example Output:
+Example output:
 
 ```text
 1) "id"
@@ -280,79 +512,80 @@ Example Output:
 5) "email"
 6) "divakar@example.com"
 7) "age"
-8) "31"
+8) "30"
 ```
 
 ---
 
 ## Production Considerations
 
-### Expiration
+### Cache Invalidation
 
-Temporary profiles can be configured with a TTL:
+Profile updates must invalidate or refresh cached copies.
 
-```java
-repository.save(profile, Duration.ofHours(1));
-```
+### TTL Strategy
 
-This stores the hash and applies the expiration to the entire profile key. Calling
-`save(profile)` without a TTL keeps the profile persistent.
+Profiles may:
 
-The equivalent Redis command is:
+- Never expire
+- Expire after inactivity
+- Be refreshed periodically
 
-```text
-EXPIRE user:profile:{user-123} 3600
-```
+Choose based on access patterns.
 
----
+### Cache Stampede Protection
 
-### Avoid KEYS in Production
+Protect frequently accessed profiles using:
 
-Avoid:
+- Request coalescing
+- Refresh-ahead
+- Distributed locks
 
-```text
-KEYS user:profile:*
-```
+### Serialization Versioning
 
-because it scans the entire keyspace and can block Redis.
+Profile schemas evolve.
 
-Use:
+Applications should tolerate missing or additional fields.
 
-```text
-SCAN
-```
+### PII Handling
 
-instead.
+User profiles often contain sensitive information.
 
----
+Consider:
 
-### Listing Profiles
-
-Redis is optimized for key-based access.
-
-If profile listing is required:
-
-- Maintain a separate index.
-- Use Redis Search.
-- Store identifiers in a Set or Sorted Set.
-
----
+- Encryption
+- Access controls
+- Data retention requirements
 
 ### Durability
 
 Redis can be used as:
 
 - Cache
-- Primary Database
-- Hybrid Storage Layer
+- Primary Store
+- Hybrid Store
 
-If Redis is the system of record, ensure:
+Each requires different persistence, backup, and replication strategies.
 
-- RDB snapshots are configured.
-- AOF persistence is enabled.
-- Replication is configured.
-- Backups are tested.
-- Recovery procedures are documented.
+---
+
+## Memory Considerations
+
+Although Redis Hashes are memory efficient, every field introduces overhead.
+
+Consider:
+
+- Number of fields
+- Average field size
+- Key overhead
+- Replication overhead
+- Persistence overhead
+
+Large numbers of tiny hashes can still consume significant memory.
+
+Redis mitigates this through Listpack encoding.
+
+Measure memory usage using production-like datasets.
 
 ---
 
@@ -360,7 +593,31 @@ If Redis is the system of record, ensure:
 
 ### Why use a Redis Hash instead of a String?
 
-Hashes provide field-level access and updates without rewriting the entire object.
+Hashes support field-level access and updates.
+
+Instead of rewriting an entire JSON document:
+
+```text
+SET user:profile:{user-123} {...}
+```
+
+Redis can update a single field:
+
+```text
+HSET user:profile:{user-123} age 31
+```
+
+---
+
+### What is the complexity of HSET?
+
+```text
+O(1)
+```
+
+Average case.
+
+---
 
 ### What is the complexity of HGET?
 
@@ -368,26 +625,85 @@ Hashes provide field-level access and updates without rewriting the entire objec
 O(1)
 ```
 
+Average case.
+
+---
+
 ### What is the complexity of HGETALL?
 
 ```text
 O(N)
 ```
 
-where:
+Where:
 
 ```text
-N = Number of fields in the hash
+N = number of fields in the hash
 ```
 
-### When should Hashes be avoided?
+---
 
-- Large nested documents
-- Complex search requirements
-- Deeply hierarchical data structures
+### When does Redis switch from Listpack to Hashtable?
 
-In such cases consider:
+Redis stores small hashes using Listpack encoding.
 
-- RedisJSON
-- Redis Search
-- A dedicated document database
+When configurable thresholds are exceeded, Redis automatically converts the structure into a Hashtable.
+
+---
+
+### Hash vs RedisJSON
+
+Hashes:
+
+- Memory efficient
+- Simple
+- Field-level updates
+
+RedisJSON:
+
+- Nested documents
+- JSONPath queries
+- Rich document operations
+
+---
+
+### Hash vs Relational Database
+
+Relational databases provide:
+
+- Transactions
+- Joins
+- Analytics
+- Durable storage
+
+Redis Hashes provide:
+
+- Low latency
+- In-memory access
+- Fast caching
+
+Most production systems use both.
+
+---
+
+### How do Hashes behave in Redis Cluster?
+
+Hashes themselves are not distributed.
+
+The entire hash lives on one shard.
+
+Example:
+
+```text
+user:profile:{user-123}
+```
+
+Related keys using the same hash tag:
+
+```text
+user:profile:{user-123}
+user:settings:{user-123}
+user:orders:{user-123}
+```
+
+are assigned to the same slot and shard.
