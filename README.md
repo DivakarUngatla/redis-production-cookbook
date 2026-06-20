@@ -1,10 +1,8 @@
 # Redis Production Cookbook
 
-Production-grade Redis patterns using Spring Boot, Redis Stack, Streams, Search, Geo, Sentinel, Cluster, and AWS ElastiCache.
+![Redis Production Cookbook](./docs/images/redis_cookbook_scope.png)
 
-Copyright (c) 2026 Divakar Ungatla
-
----
+Production-ready Redis examples with Spring Boot, Docker and Java 21.
 
 ## Introduction
 
@@ -173,22 +171,6 @@ Expected output:
 ```text
 PONG
 ```
-
----
-
-## AWS ElastiCache
-
-This repository contains examples and deployment patterns for:
-
-- ElastiCache Cluster Mode Disabled
-- ElastiCache Cluster Mode Enabled
-- Automatic Failover
-- Read Replicas
-- TLS Encryption
-- IAM Authentication
-- Monitoring and CloudWatch Integration
-
----
 
 ## Interview Notes
 
