@@ -1,6 +1,5 @@
 # Redis Production Cookbook
-
-![Redis Production Cookbook](./docs/images/redis_cookbook_scope.png)
+<img src="/docs/images/redis_cookbook_scope.png" >
 
 Production-ready Redis examples with Spring Boot, Docker and Java 21.
 
