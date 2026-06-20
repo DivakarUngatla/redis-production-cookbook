@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Divakar Ungatla
+
 services:
   redis:
     image: 'redis:latest'

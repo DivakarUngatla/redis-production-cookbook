@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Divakar Ungatla
+
 spring:
   application:
     name: redis-production-cookbook

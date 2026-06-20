@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2026 Divakar Ungatla
+ */
 package io.github.divakar.redisproductioncookbook.config;
 
 import org.springframework.context.annotation.Configuration;

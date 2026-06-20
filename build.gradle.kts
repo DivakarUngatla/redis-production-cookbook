@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Divakar Ungatla
+
 plugins {
 	java
 	id("org.springframework.boot") version "3.5.15"
