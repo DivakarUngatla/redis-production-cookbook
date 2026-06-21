@@ -59,4 +59,15 @@ public class RedisConfig {
 		return template;
 	}
 
+	@Bean("hyperLogLogRedisTemplate")
+	RedisTemplate<String, String> hyperLogLogRedisTemplate(RedisConnectionFactory connectionFactory) {
+		StringRedisSerializer serializer = new StringRedisSerializer();
+		RedisTemplate<String, String> template = new RedisTemplate<>();
+		template.setConnectionFactory(connectionFactory);
+		template.setKeySerializer(serializer);
+		template.setValueSerializer(serializer);
+		template.afterPropertiesSet();
+		return template;
+	}
+
 }
