@@ -48,4 +48,15 @@ public class RedisConfig {
 		return template;
 	}
 
+	@Bean("bitmapRedisTemplate")
+	RedisTemplate<String, String> bitmapRedisTemplate(RedisConnectionFactory connectionFactory) {
+		StringRedisSerializer serializer = new StringRedisSerializer();
+		RedisTemplate<String, String> template = new RedisTemplate<>();
+		template.setConnectionFactory(connectionFactory);
+		template.setKeySerializer(serializer);
+		template.setValueSerializer(serializer);
+		template.afterPropertiesSet();
+		return template;
+	}
+
 }
