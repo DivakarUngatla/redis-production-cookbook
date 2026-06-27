@@ -70,4 +70,17 @@ public class RedisConfig {
 		return template;
 	}
 
+	@Bean("geoRedisTemplate")
+	RedisTemplate<String, String> geoRedisTemplate(RedisConnectionFactory connectionFactory) {
+		StringRedisSerializer serializer = new StringRedisSerializer();
+		RedisTemplate<String, String> template = new RedisTemplate<>();
+		template.setConnectionFactory(connectionFactory);
+		template.setKeySerializer(serializer);
+		template.setValueSerializer(serializer);
+		template.setHashKeySerializer(serializer);
+		template.setHashValueSerializer(serializer);
+		template.afterPropertiesSet();
+		return template;
+	}
+
 }
