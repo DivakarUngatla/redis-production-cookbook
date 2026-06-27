@@ -762,7 +762,7 @@ However Redis Geo is not designed for:
 
 ```text
 Property Boundaries
-Polygon Search
+Polygon Search (give me everything that falls inside this exact custom shape.)
 Route Planning
 Advanced GIS Analytics
 ```
@@ -1144,6 +1144,26 @@ Partitioning and caching help distribute load.
 Each approach below makes different trade-offs between simplicity, latency, and the
 types of queries it can answer. Pick the one whose strengths match your workload.
 
+> **Two levels of abstraction, not one menu.** The entries below fall into two
+> different categories that are easy to confuse:
+>
+> - **Index structures** (QuadTree, R-Tree, BKD Tree, Grid/Geocell) are *algorithms* —
+>   building blocks. You don't deploy them directly.
+> - **Systems** (Redis Geo, PostGIS, Elasticsearch Geo) are *products* you actually run,
+>   and each one is **built on** one of those structures.
+>
+> So you never choose "R-Tree *vs* PostGIS" — choosing PostGIS *means* using an R-Tree.
+> The mapping is:
+>
+> | System | Built on | Best at |
+> |---|---|---|
+> | Redis Geo | Geohash + Sorted Set | sub-ms "what's nearby?" |
+> | PostGIS | R-Tree (via GiST) | polygons, routing, spatial joins |
+> | Elasticsearch Geo | BKD Tree | geo + text + attribute filters |
+>
+> The sections below are grouped accordingly: **Index Structures** first, then the
+> **Systems** that use them.
+
 ---
 
 ### Quick Decision Guide
@@ -1162,41 +1182,28 @@ types of queries it can answer. Pick the one whose strengths match your workload
 
 ### Comparison Matrix
 
-| Technology | Stores | Best query | Latency | Complexity |
-|---|---|---|---|---|
-| Redis Geo | Points | Radius search | < 1 ms | Low |
-| QuadTree | Points | Region / collision | 1–5 ms | Medium |
-| R-Tree | Shapes + Points | Polygon containment | 5–20 ms | Medium |
-| BKD Tree | Points + attributes | Multi-dimensional range | 1–10 ms | Medium |
-| Grid / Geocell | Points | Aggregation / heatmap | < 1 ms | Very low |
-| PostGIS | Shapes + Points | Any spatial query | 5–50 ms | High |
-| Elasticsearch Geo | Points | Geo + text + filters | 5–20 ms | High |
+| Technology | Kind | Stores | Best query | Latency | Complexity |
+|---|---|---|---|---|---|
+| Redis Geo | System | Points | Radius search | < 1 ms | Low |
+| QuadTree | Structure | Points | Region / collision | 1–5 ms | Medium |
+| R-Tree | Structure | Shapes + Points | Polygon containment | 5–20 ms | Medium |
+| BKD Tree | Structure | Points + attributes | Multi-dimensional range | 1–10 ms | Medium |
+| Grid / Geocell | Structure | Points | Aggregation / heatmap | < 1 ms | Very low |
+| PostGIS | System | Shapes + Points | Any spatial query | 5–50 ms | High |
+| Elasticsearch Geo | System | Points | Geo + text + filters | 5–20 ms | High |
+
+*Latency/complexity for the bare structures reflects a typical implementation; in
+practice you get them via the System that embeds them.*
 
 ---
 
-### Redis Geo
+### Index Structures (The Building Blocks)
 
-**What it is:** Coordinates encoded as scores in a Redis Sorted Set. Nearby locations get similar scores, so a radius search is just a range scan — no full scan needed.
+These are *algorithms*, not products. You don't deploy a QuadTree or an R-Tree on its
+own — you use one of the **Systems** further below that has it built in. Redis Geo's own
+structure (Geohash + Sorted Set) is covered in the earlier "Geohash Deep Dive" section.
 
-**Pros**
-- Sub-millisecond latency, data lives in memory
-- Four commands cover almost every use case (GEOADD, GEOPOS, GEODIST, GEOSEARCH)
-- No extra infrastructure if Redis is already in the stack
-
-**Cons**
-- Points only — no polygons or shapes
-- Cannot combine distance with other filters (rating, price, etc.) natively
-- One key = one shard; a global index becomes a hot key at scale
-
-**Use when** you need fast nearest-neighbour lookups for points: drivers, restaurants, stores, users.
-
-**Skip when** you need polygon containment, attribute filtering, or routing.
-
-**Used by:** Swiggy, Zomato, Grab, Gojek (driver/restaurant discovery), Snapchat (Snap Map)
-
----
-
-### QuadTree
+#### QuadTree
 
 **What it is:** A tree that recursively splits space into four quadrants. Dense areas get finer splits automatically; sparse areas stay coarse.
 
@@ -1227,7 +1234,7 @@ Sparse area          Dense city area
 
 ---
 
-### R-Tree
+#### R-Tree
 
 **What it is:** A hierarchy of bounding rectangles wrapping shapes. A containment query walks the tree and skips any branch whose bounding box doesn't overlap the query area.
 
@@ -1259,9 +1266,33 @@ Root bbox
 
 ---
 
-### BKD Tree
+#### BKD Tree
 
 **What it is:** A multi-dimensional tree that indexes latitude, longitude, and other attributes (rating, price, delivery time) together. A single query prunes branches where any dimension falls outside the required range.
+
+```text
+Each point is indexed on 3 dimensions: (lat, lon, rating)
+The split dimension cycles by depth →  depth 0: LAT   depth 1: LON   depth 2: RATING
+
+                        [ LAT < 12.95 ]                       depth 0 · LAT
+              ┌───────────────┴───────────────┐
+       [ LON < 77.62 ]                  [ LON < 77.63 ]       depth 1 · LON
+        ┌──────┴──────┐                  ┌──────┴──────┐
+   [RAT < 3.9]   [RAT < 4.8]       [RAT < 4.35]   [RAT < 3.8] depth 2 · RATING
+    ┌───┴──┐      ┌───┴──┐          ┌────┴──┐      ┌───┴──┐
+    R2    R4      R3    R7          R5     R1      R6    R8    leaves = full point
+
+  R1 12.97,77.59 ★4.5   R2 12.94,77.61 ★3.8   R3 12.91,77.64 ★4.7   R4 12.93,77.58 ★4.0
+  R5 12.99,77.60 ★4.2   R6 12.96,77.66 ★3.5   R7 12.92,77.62 ★4.9   R8 12.95,77.63 ★4.1
+
+  left branch = value < split      right branch = value ≥ split
+
+A query like  lat ∈ [12.93,12.97] ∧ lon ∈ [77.57,77.62] ∧ rating ≥ 4.0  → matches R4, R1,
+pruning all other branches in a single pass. RATING only gets its own split once the
+LAT/LON splits have narrowed a cell that still holds more than one point (in real BKD,
+more points than fit in one leaf block). Lucene actually splits on whichever dimension
+has the widest spread at each node, so rating can be chosen earlier than depth 2.
+```
 
 **Pros**
 - Combines proximity with arbitrary attribute filters in one index pass
@@ -1281,7 +1312,7 @@ Root bbox
 
 ---
 
-### Grid / Geocell Index
+#### Grid / Geocell Index
 
 **What it is:** The world divided into a fixed grid of equal-size cells. Every coordinate is assigned to a cell by rounding. Aggregations become a simple group-by on the cell ID.
 
@@ -1311,7 +1342,40 @@ lat 11    |   A3    |   B3    |   C3    |
 
 ---
 
-### PostGIS
+### Systems (What You Actually Deploy)
+
+These are real products you run in production. Each is powered by one of the structures
+above, wrapped with storage, a query language, and durability:
+
+| System | Built on | Best at |
+|---|---|---|
+| Redis Geo | Geohash + Sorted Set | sub-ms "what's nearby?" |
+| PostGIS | R-Tree (via GiST) | polygons, routing, spatial joins |
+| Elasticsearch Geo | BKD Tree | geo + text + attribute filters |
+
+#### Redis Geo
+
+**What it is:** Coordinates encoded as scores in a Redis Sorted Set. Nearby locations get similar scores, so a radius search is just a range scan — no full scan needed.
+
+**Pros**
+- Sub-millisecond latency, data lives in memory
+- Four commands cover almost every use case (GEOADD, GEOPOS, GEODIST, GEOSEARCH)
+- No extra infrastructure if Redis is already in the stack
+
+**Cons**
+- Points only — no polygons or shapes
+- Cannot combine distance with other filters (rating, price, etc.) natively
+- One key = one shard; a global index becomes a hot key at scale
+
+**Use when** you need fast nearest-neighbour lookups for points: drivers, restaurants, stores, users.
+
+**Skip when** you need polygon containment, attribute filtering, or routing.
+
+**Used by:** Swiggy, Zomato, Grab, Gojek (driver/restaurant discovery), Snapchat (Snap Map)
+
+---
+
+#### PostGIS
 
 **What it is:** A full GIS extension for PostgreSQL. Stores points, lines, and polygons with full SQL support. If Redis Geo is a city directory, PostGIS is the city planning department.
 
@@ -1333,7 +1397,7 @@ lat 11    |   A3    |   B3    |   C3    |
 
 ---
 
-### Elasticsearch Geo
+#### Elasticsearch Geo
 
 **What it is:** A search engine that understands location. Geo proximity is just another filter alongside text search, ratings, and facets — all handled in one query.
 
