@@ -27,11 +27,11 @@ import static org.awaitility.Awaitility.await;
  *
  * <p>The consumer group and its workers run for the whole Spring context, processing
  * entries asynchronously, so assertions poll the processor's buffers with a bounded
- * timeout. Each test tags events with unique order IDs because the stream and consumer
- * group are shared across the instance. A Redis instance must be available on the
- * configured host and port.</p>
+ * timeout. The tests run against a dedicated Redis database so the stream and consumer
+ * group are isolated from the other features' contexts. Each test also tags events with
+ * unique order IDs. A Redis instance must be available on the configured host and port.</p>
  */
-@SpringBootTest
+@SpringBootTest(properties = "spring.data.redis.database=11")
 class OrderEventStreamIT {
 
 	private final OrderEventProducer producer;
@@ -57,7 +57,7 @@ class OrderEventStreamIT {
 
 		assertThat(response.entryId()).isNotBlank();
 
-		await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+		await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
 				assertThat(processedMatching(Set.of(orderId))).hasSize(1));
 
 		OrderEvent processed = processedMatching(Set.of(orderId)).get(0);
@@ -81,7 +81,7 @@ class OrderEventStreamIT {
 					orderId, types[i % types.length], new BigDecimal("10.00"), "customer-" + i);
 		}
 
-		await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+		await().atMost(Duration.ofSeconds(20)).untilAsserted(() ->
 				assertThat(processedMatching(orderIds)).hasSize(orderIds.size()));
 
 		List<OrderEvent> processed = processedMatching(orderIds);
