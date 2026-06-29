@@ -1,0 +1,37 @@
+# Copyright (c) 2026 Divakar Ungatla
+#
+# One primary + two replicas, to see replication in action.
+#
+#   cd src/main/java/io/github/divakar/redisproductioncookbook/features/replication
+#   docker compose -f compose.replication.yaml up -d
+#
+# Host ports 6390/6391/6392 are used so they do NOT clash with the main
+# redis-local (6379) or the persistence demo (6380). Inside the compose network
+# the replicas reach the primary by its service name on the default port 6379.
+
+name: redis-replication-demo
+
+services:
+  primary:
+    image: 'redis:8.2'
+    container_name: 'redis-primary'
+    ports:
+      - '6390:6379'
+
+  replica-1:
+    image: 'redis:8.2'
+    container_name: 'redis-replica-1'
+    command: ['redis-server', '--replicaof', 'primary', '6379']
+    ports:
+      - '6391:6379'
+    depends_on:
+      - primary
+
+  replica-2:
+    image: 'redis:8.2'
+    container_name: 'redis-replica-2'
+    command: ['redis-server', '--replicaof', 'primary', '6379']
+    ports:
+      - '6392:6379'
+    depends_on:
+      - primary
