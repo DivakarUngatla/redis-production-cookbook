@@ -1,0 +1,4 @@
+# Generated Redis persistence files (created when you run the demo).
+# Keep the data/ directory itself, ignore the files Redis writes into it.
+data/*
+!data/.gitkeep

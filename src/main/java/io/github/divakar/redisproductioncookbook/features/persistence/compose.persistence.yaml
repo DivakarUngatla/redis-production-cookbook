@@ -1,0 +1,25 @@
+# Copyright (c) 2026 Divakar Ungatla
+#
+# Standalone Redis with hybrid persistence, for trying out and inspecting the
+# generated backup files (dump.rdb + appendonlydir/) on your host.
+#
+#   cd examples/persistence
+#   docker compose -f compose.persistence.yaml up -d
+#
+# Runs on port 6380 so it does NOT clash with the main redis-local on 6379.
+# The ./data directory is bind-mounted into the container, so persistence files
+# appear right here on your machine where you can inspect them.
+
+name: redis-persistence-demo
+
+services:
+  redis:
+    image: 'redis:8.2'
+    container_name: 'redis-persist-demo'
+    restart: unless-stopped
+    command: ['redis-server', '/usr/local/etc/redis/redis.conf']
+    ports:
+      - '6380:6379'
+    volumes:
+      - './redis.conf:/usr/local/etc/redis/redis.conf:ro'
+      - './data:/data'
