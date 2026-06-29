@@ -1,0 +1,73 @@
+# Runnable Sentinel demo: 1 primary + 2 replicas + 3 Sentinels.
+#
+# Each Sentinel writes a fresh, writable config into its own container at startup
+# (Sentinel rewrites its config file at runtime, so it cannot be shared read-only).
+# `sentinel resolve-hostnames yes` lets us monitor the primary by its compose
+# service name (`primary`) instead of a hardcoded IP.
+#
+#   docker compose -f compose.sentinel.yaml up -d
+#   docker exec redis-sentinel-1 redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster
+#   docker stop redis-primary          # trigger a failover
+#   sleep 12
+#   docker exec redis-sentinel-1 redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster
+#   docker compose -f compose.sentinel.yaml down
+
+name: redis-sentinel-demo
+
+services:
+  primary:
+    image: 'redis:8.2'
+    container_name: 'redis-primary'
+    ports:
+      - '6400:6379'
+
+  replica-1:
+    image: 'redis:8.2'
+    container_name: 'redis-replica-1'
+    command: ['redis-server', '--replicaof', 'primary', '6379']
+    ports:
+      - '6401:6379'
+    depends_on:
+      - primary
+
+  replica-2:
+    image: 'redis:8.2'
+    container_name: 'redis-replica-2'
+    command: ['redis-server', '--replicaof', 'primary', '6379']
+    ports:
+      - '6402:6379'
+    depends_on:
+      - primary
+
+  sentinel-1:
+    image: 'redis:8.2'
+    container_name: 'redis-sentinel-1'
+    command: ["sh", "-c", "{ echo 'port 26379'; echo 'sentinel resolve-hostnames yes'; echo 'sentinel monitor mymaster primary 6379 2'; echo 'sentinel down-after-milliseconds mymaster 5000'; echo 'sentinel failover-timeout mymaster 60000'; echo 'sentinel parallel-syncs mymaster 1'; } > /tmp/sentinel.conf && redis-sentinel /tmp/sentinel.conf"]
+    ports:
+      - '26379:26379'
+    depends_on:
+      - primary
+      - replica-1
+      - replica-2
+
+  sentinel-2:
+    image: 'redis:8.2'
+    container_name: 'redis-sentinel-2'
+    command: ["sh", "-c", "{ echo 'port 26379'; echo 'sentinel resolve-hostnames yes'; echo 'sentinel monitor mymaster primary 6379 2'; echo 'sentinel down-after-milliseconds mymaster 5000'; echo 'sentinel failover-timeout mymaster 60000'; echo 'sentinel parallel-syncs mymaster 1'; } > /tmp/sentinel.conf && redis-sentinel /tmp/sentinel.conf"]
+    ports:
+      - '26380:26379'
+    depends_on:
+      - primary
+      - replica-1
+      - replica-2
+
+  sentinel-3:
+    image: 'redis:8.2'
+    container_name: 'redis-sentinel-3'
+    command: ["sh", "-c", "{ echo 'port 26379'; echo 'sentinel resolve-hostnames yes'; echo 'sentinel monitor mymaster primary 6379 2'; echo 'sentinel down-after-milliseconds mymaster 5000'; echo 'sentinel failover-timeout mymaster 60000'; echo 'sentinel parallel-syncs mymaster 1'; } > /tmp/sentinel.conf && redis-sentinel /tmp/sentinel.conf"]
+    ports:
+      - '26381:26379'
+    depends_on:
+      - primary
+      - replica-1
+      - replica-2
