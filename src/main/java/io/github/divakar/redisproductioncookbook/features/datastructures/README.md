@@ -11,7 +11,7 @@ This module and the submodules demonstrates the most commonly used Redis data st
 
 The goal is to learn Redis by building practical applications rather than memorizing commands.
 
-![Redis Data Structures Cheat Sheet](/docs/images/git_redis_ds_cheatsheet.png)
+![Redis Data Structures Cheat Sheet](../../../../../../../../../docs/images/git_redis_ds_cheatsheet.png)
 
 ## Introduction
 

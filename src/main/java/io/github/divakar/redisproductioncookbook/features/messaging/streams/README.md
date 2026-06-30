@@ -336,7 +336,7 @@ docker exec redis-local redis-cli XPENDING orders:events order-processors
 
 ## Pub/Sub vs Streams vs Kafka
 
-![Redis Pub/Sub vs Streams vs Kafka](/docs/images/redis_pubsubvsstreamsvskafka.png)
+![Redis Pub/Sub vs Streams vs Kafka](../../../../../../../../../../docs/images/redis_pubsubvsstreamsvskafka.png)
 
 The three sit on a spectrum from **transient signal** to **durable history**:
 

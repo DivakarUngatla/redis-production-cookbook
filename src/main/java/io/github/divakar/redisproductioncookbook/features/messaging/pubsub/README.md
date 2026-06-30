@@ -357,7 +357,7 @@ docker exec redis-local redis-cli PUBSUB NUMSUB notifications:realtime
 
 ## Redis Pub/Sub vs Kafka
 
-![Redis Pub/Sub vs Kafka](/docs/images/redis_pub_subvskafka.png)
+![Redis Pub/Sub vs Kafka](../../../../../../../../../../docs/images/redis_pub_subvskafka.png)
 
 Redis Pub/Sub and Kafka are often compared but solve different problems. The core
 difference is **transient delivery vs durable storage**.

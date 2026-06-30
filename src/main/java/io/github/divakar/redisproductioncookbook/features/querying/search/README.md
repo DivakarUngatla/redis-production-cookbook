@@ -313,7 +313,7 @@ docker exec redis-local redis-cli FT.INFO products-idx
 
 ## Redis Search vs Elasticsearch vs Postgres FTS
 
-![Text search: Redis Search vs Elasticsearch vs Postgres FTS](/docs/images/redis-textsearch.png)
+![Text search: Redis Search vs Elasticsearch vs Postgres FTS](../../../../../../../../../../docs/images/redis-textsearch.png)
 
 All three support full-text search and ranking; they differ in scale, operational cost,
 and where the data lives.
