@@ -19,7 +19,7 @@ This is a **configuration and operations** topic — it's driven by `redis.conf`
 observed with `redis-cli`. So this module is a guide plus a runnable **primary + 2 replicas**
 example.
 
-![Redis Replication – Complete Guide](/docs/images/redis_replication.png)
+![Redis Replication – Complete Guide](../../../../../../../../../../docs/images/redis_replication.png)
 
 > **Hands-on:** there's a runnable example below — see
 > [Hands-On: One Primary, Two Replicas](#hands-on-one-primary-two-replicas) to spin up a

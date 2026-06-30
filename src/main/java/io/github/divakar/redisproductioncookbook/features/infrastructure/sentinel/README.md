@@ -13,7 +13,7 @@ Think of Sentinel as a **watchdog**: *monitor → detect → recover*, with no h
 This is a **configuration and operations** topic, so this module is a guide plus a runnable
 example: **1 primary + 2 replicas + 3 sentinels**, including a real failover you can trigger.
 
-![Redis Sentinel – Made Easy](/docs/images/redis_sentinel_concept.png)
+![Redis Sentinel – Made Easy](../../../../../../../../../../docs/images/redis_sentinel_concept.png)
 
 > **Hands-on:** there's a runnable example below — see
 > [Hands-On: Watch a Real Failover](#hands-on-watch-a-real-failover) to kill the primary and

@@ -1139,7 +1139,7 @@ Partitioning and caching help distribute load.
 
 ## Advanced Geospatial Index Comparison
 
-![Geospatial Index Cheat Sheet](/docs/images/redis-geospatial-indexes.png)
+![Geospatial Index Cheat Sheet](../../../../../../../../../../docs/images/redis-geospatial-indexes.png)
 
 Each approach below makes different trade-offs between simplicity, latency, and the
 types of queries it can answer. Pick the one whose strengths match your workload.

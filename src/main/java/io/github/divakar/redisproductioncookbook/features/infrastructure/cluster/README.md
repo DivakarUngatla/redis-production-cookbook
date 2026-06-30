@@ -20,7 +20,7 @@ Two ideas do all the work:
 This is a **configuration and operations** topic, so this module is a guide plus a runnable
 **6-node (3 primaries + 3 replicas)** example you can form and fail over yourself.
 
-![Redis Cluster – The Complete Cheat Sheet](/docs/images/redis_cluster_concept.png)
+![Redis Cluster – The Complete Cheat Sheet](../../../../../../../../../../docs/images/redis_cluster_concept.png)
 
 > **Hands-on:** there's a runnable example below — see
 > [Hands-On: A 6-Node Cluster](#hands-on-a-6-node-cluster) to create a 3-primary / 3-replica
@@ -96,7 +96,7 @@ keys live, and the client follows.
 
 ## Multi-Key Operations and Hash Tags
 
-![Redis Cluster – Multi-Key Operations](/docs/images/redis_cluster_multi_key_operations.png)
+![Redis Cluster – Multi-Key Operations](../../../../../../../../../../docs/images/redis_cluster_multi_key_operations.png)
 
 A command that touches **multiple keys** can only run if **all those keys live in the same slot**
 (same node). Otherwise Redis refuses it:
@@ -212,7 +212,7 @@ Rule of thumb: **fits on one machine → Sentinel; needs to grow beyond one mach
 
 ## Hands-On: A 6-Node Cluster
 
-![How to Enable Redis Cluster – Step by Step](/docs/images/redis_cluster_setup.png)
+![How to Enable Redis Cluster – Step by Step](../../../../../../../../../../docs/images/redis_cluster_setup.png)
 
 A runnable `compose.cluster.yaml` lives **next to this README**: 6 cluster-enabled nodes (host
 ports **7001–7006**) that become **3 primaries + 3 replicas**.

@@ -13,7 +13,7 @@ This module is the **capstone**: a guide to standing up a *complete, production-
 AWS, mapping everything you already learned to the managed offering — plus copy-paste
 **Terraform** and **AWS CLI** examples next to this README.
 
-![Amazon ElastiCache for Redis – Complete Setup & Configuration Guide](/docs/images/redis_aws_elastic_cache.png)
+![Amazon ElastiCache for Redis – Complete Setup & Configuration Guide](../../../../../../../../../../docs/images/redis_aws_elastic_cache.png)
 
 > **Heads-up — these examples are not run live.** Unlike the Docker modules in this cookbook, the
 > [Terraform](./terraform/elasticache.tf) and [AWS CLI](./create-elasticache.sh) here can't be

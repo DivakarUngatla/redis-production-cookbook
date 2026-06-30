@@ -16,7 +16,7 @@ This is a **configuration and operations** topic: the behavior is controlled by 
 (or compose flags) and observed with `redis-cli`, not by application code. So this module is a
 guide plus runnable config and `redis-cli` walkthroughs.
 
-![Redis Persistence – Complete Guide](/docs/images/redis_persistence.png)
+![Redis Persistence – Complete Guide](../../../../../../../../../../docs/images/redis_persistence.png)
 
 > **Don't skip:** [AOF fsync policies](#aof-fsync-policies-durability-vs-performance),
 > [RDB vs AOF](#rdb-vs-aof), and [Replication is NOT persistence](#replication-is-not-persistence)
