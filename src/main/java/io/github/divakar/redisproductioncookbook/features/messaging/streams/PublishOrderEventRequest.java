@@ -17,10 +17,15 @@ import jakarta.validation.constraints.Size;
  * @param type order event category
  * @param amount monetary amount associated with the event
  * @param customer customer associated with the order
+ * @param failFirstAttempt when {@code true}, the worker that first picks up this entry
+ *     throws before acknowledging it, simulating a consumer crash mid-processing. The
+ *     entry then stays in the Pending Entries List until {@link PendingEventRecovery}
+ *     reclaims and reprocesses it — a hands-on way to observe at-least-once recovery
  */
 public record PublishOrderEventRequest(
 		@NotBlank @Size(max = 128) String orderId,
 		@NotNull OrderEventType type,
 		@NotNull @Positive BigDecimal amount,
-		@NotBlank @Size(max = 128) String customer) {
+		@NotBlank @Size(max = 128) String customer,
+		boolean failFirstAttempt) {
 }

@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -43,6 +44,9 @@ public class OrderEventProcessor {
 	private final ConcurrentMap<String, Deque<OrderEvent>> processedByConsumer =
 			new ConcurrentHashMap<>();
 
+	/** Entry IDs for which the one-time simulated failure has already been injected. */
+	private final Set<String> failureInjected = ConcurrentHashMap.newKeySet();
+
 	/**
 	 * Creates the order event processor.
 	 *
@@ -62,8 +66,18 @@ public class OrderEventProcessor {
 	 * @param entryId stream entry ID
 	 * @param type raw {@code type} field of the entry
 	 * @param payload raw JSON {@code payload} field of the entry
+	 * @param failFirstAttempt when {@code true}, throw before acknowledging the very first
+	 *     time this entry is seen, simulating a consumer crash mid-processing; the entry
+	 *     stays in the Pending Entries List and is later reclaimed by recovery (demo only)
 	 */
-	public void process(String consumer, RecordId entryId, String type, String payload) {
+	public void process(
+			String consumer, RecordId entryId, String type, String payload, boolean failFirstAttempt) {
+		if (failFirstAttempt && failureInjected.add(entryId.getValue())) {
+			log.warn("[{}] simulated crash before ACK for entry {} — left in the PEL for recovery",
+					consumer, entryId.getValue());
+			throw new IllegalStateException(
+					"Simulated processing failure before ACK for entry " + entryId.getValue());
+		}
 		OrderEvent event = toOrderEvent(entryId.getValue(), type, payload);
 		record(consumer, event);
 		redisTemplate.opsForStream()

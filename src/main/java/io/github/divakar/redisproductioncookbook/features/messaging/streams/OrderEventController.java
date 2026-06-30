@@ -60,7 +60,8 @@ public class OrderEventController {
 	@PostMapping
 	public PublishOrderEventResponse publish(@Valid @RequestBody PublishOrderEventRequest request) {
 		return producer.publish(
-				request.orderId(), request.type(), request.amount(), request.customer());
+				request.orderId(), request.type(), request.amount(), request.customer(),
+				request.failFirstAttempt());
 	}
 
 	/**

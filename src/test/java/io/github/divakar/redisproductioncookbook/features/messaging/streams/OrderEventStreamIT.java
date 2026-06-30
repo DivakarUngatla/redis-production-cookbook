@@ -53,7 +53,7 @@ class OrderEventStreamIT {
 		String orderId = "order-" + UUID.randomUUID();
 
 		PublishOrderEventResponse response = producer.publish(
-				orderId, OrderEventType.ORDER_PLACED, new BigDecimal("42.50"), "alice");
+				orderId, OrderEventType.ORDER_PLACED, new BigDecimal("42.50"), "alice", false);
 
 		assertThat(response.entryId()).isNotBlank();
 
@@ -78,7 +78,7 @@ class OrderEventStreamIT {
 			String orderId = "order-" + UUID.randomUUID();
 			orderIds.add(orderId);
 			producer.publish(
-					orderId, types[i % types.length], new BigDecimal("10.00"), "customer-" + i);
+					orderId, types[i % types.length], new BigDecimal("10.00"), "customer-" + i, false);
 		}
 
 		await().atMost(Duration.ofSeconds(20)).untilAsserted(() ->
@@ -88,6 +88,36 @@ class OrderEventStreamIT {
 		// Exactly once: no order ID is processed more than one time across all consumers.
 		long distinctOrderIds = processed.stream().map(OrderEvent::orderId).distinct().count();
 		assertThat(distinctOrderIds).isEqualTo(orderIds.size());
+	}
+
+	@Test
+	void entryLeftUnacknowledgedByACrashedWorkerIsRecoveredAndProcessed() {
+		String orderId = "order-" + UUID.randomUUID();
+
+		PublishOrderEventResponse response = producer.publish(
+				orderId, OrderEventType.ORDER_PLACED, new BigDecimal("99.00"), "carol", true);
+
+		// The first worker throws before acknowledging, so the entry must sit in the PEL.
+		await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
+				assertThat(pendingEntryIds()).contains(response.entryId()));
+
+		// Recovery reclaims entries idle past the threshold and reprocesses them. The wait
+		// spans the idle threshold plus the scheduler interval.
+		await().atMost(Duration.ofSeconds(75)).untilAsserted(() -> {
+			assertThat(processedMatching(Set.of(orderId))).hasSize(1);
+			assertThat(pendingEntryIds()).doesNotContain(response.entryId());
+		});
+
+		assertThat(consumerThatProcessed(orderId)).isEqualTo(PendingEventRecovery.RECOVERY_CONSUMER);
+	}
+
+	private String consumerThatProcessed(String orderId) {
+		return processor.processedByConsumer(OrderEventProcessor.MAX_PROCESSED).stream()
+				.filter(view -> view.processed().stream()
+						.anyMatch(event -> orderId.equals(event.orderId())))
+				.map(ProcessedEvents::consumer)
+				.findFirst()
+				.orElse(null);
 	}
 
 	private List<OrderEvent> processedMatching(Set<String> orderIds) {

@@ -95,7 +95,8 @@ public class PendingEventRecovery {
 					RECOVERY_CONSUMER,
 					record.getId(),
 					stringField(record, "type"),
-					stringField(record, "payload"));
+					stringField(record, "payload"),
+					false);
 		}
 	}
 

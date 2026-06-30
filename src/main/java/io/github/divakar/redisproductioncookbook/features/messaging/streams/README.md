@@ -334,6 +334,43 @@ docker exec redis-local redis-cli XINFO GROUPS orders:events
 docker exec redis-local redis-cli XPENDING orders:events order-processors
 ```
 
+## Break It Yourself: Crash & Recovery
+
+The whole point of Streams over Pub/Sub is that a crashed worker **does not lose work**. You
+can trigger and observe that recovery end-to-end with one flag.
+
+Publishing with `"failFirstAttempt": true` makes the first worker that picks up the entry
+throw **before** it acknowledges — simulating a process that dies mid-job. The entry then
+stays in the Pending Entries List until `PendingEventRecovery` reclaims it (entries idle
+longer than 30s, scanned every 10s) and reprocesses it under the `recovery` consumer.
+
+```bash
+# 1. Publish an event that will fail on its first processing attempt:
+curl -i -X POST http://localhost:8080/api/order-events \
+  -H 'Content-Type: application/json' \
+  -d '{"orderId":"order-boom","type":"ORDER_PLACED","amount":99.00,"customer":"carol","failFirstAttempt":true}'
+
+# 2. Within a second or two, the entry is stuck — delivered but not acknowledged:
+curl http://localhost:8080/api/order-events/pending
+#    -> totalPending = 1, owned by worker-1 or worker-2
+
+# 3. Wait ~30-40s for recovery to reclaim and reprocess it, then check again:
+curl http://localhost:8080/api/order-events/pending     # -> totalPending = 0 (recovered)
+curl http://localhost:8080/api/order-events/processed    # -> the event now appears under "recovery"
+```
+
+In the application logs you will see the simulated crash followed by the reclaim:
+
+```text
+WARN  [worker-1] simulated crash before ACK for entry 1718...-0 — left in the PEL for recovery
+INFO  Reclaiming stuck entry 1718...-0 (idle PT31S, delivered 1 times)
+INFO  [recovery] processed and acked ORDER_PLACED for order order-boom (entry 1718...-0)
+```
+
+Nothing was dropped: the event was delivered until it was finally acknowledged — the
+**at-least-once** guarantee in action. Because recovery means an entry can be processed
+more than once, handlers must be **idempotent**.
+
 ## Pub/Sub vs Streams vs Kafka
 
 ![Redis Pub/Sub vs Streams vs Kafka](../../../../../../../../../../docs/images/redis_pubsubvsstreamsvskafka.png)

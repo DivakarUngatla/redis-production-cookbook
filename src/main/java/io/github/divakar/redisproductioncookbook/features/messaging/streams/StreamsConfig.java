@@ -74,6 +74,9 @@ public class StreamsConfig {
 				StreamMessageListenerContainerOptions.builder()
 						.pollTimeout(Duration.ofSeconds(2))
 						.batchSize(10)
+						.errorHandler(throwable -> log.warn(
+								"Listener error (entry left unacknowledged for recovery): {}",
+								throwable.getMessage()))
 						.build();
 
 		StreamMessageListenerContainer<String, MapRecord<String, String, String>> container =
@@ -99,7 +102,8 @@ public class StreamsConfig {
 						worker,
 						record.getId(),
 						record.getValue().get("type"),
-						record.getValue().get("payload")));
+						record.getValue().get("payload"),
+						"true".equals(record.getValue().get("failFirstAttempt"))));
 	}
 
 	private void ensureGroup(StringRedisTemplate redisTemplate) {

@@ -5,6 +5,7 @@ package io.github.divakar.redisproductioncookbook.features.messaging.streams;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -45,16 +46,22 @@ public class OrderEventProducer {
 	 * @param type order event category
 	 * @param amount monetary amount associated with the event
 	 * @param customer customer associated with the order
+	 * @param failFirstAttempt when {@code true}, tags the entry so the first worker to
+	 *     process it fails before acknowledging, leaving it for recovery (demo only)
 	 * @return the appended event including its generated stream entry ID
 	 */
 	public PublishOrderEventResponse publish(
-			String orderId, OrderEventType type, BigDecimal amount, String customer) {
+			String orderId, OrderEventType type, BigDecimal amount, String customer,
+			boolean failFirstAttempt) {
 		validate(orderId, type, amount, customer);
 
 		OrderEvent event = new OrderEvent(null, orderId, type, amount, customer, Instant.now());
-		Map<String, String> fields = Map.of(
-				"type", type.name(),
-				"payload", serialize(event));
+		Map<String, String> fields = new LinkedHashMap<>();
+		fields.put("type", type.name());
+		fields.put("payload", serialize(event));
+		if (failFirstAttempt) {
+			fields.put("failFirstAttempt", "true");
+		}
 
 		RecordId recordId = redisTemplate.opsForStream().add(
 				StreamRecords.mapBacked(fields).withStreamKey(StreamsConfig.STREAM_KEY));
